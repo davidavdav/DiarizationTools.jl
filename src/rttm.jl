@@ -6,7 +6,7 @@
 
 module DiarizationTools
 
-export RTTM, readrttm, writerttm, files, speakers, perfectsad, rmspeaker, mosttalkative, rmsadfromspeaker, insertspeaker, splitsad, readuem, writeuem
+export RTTM, readrttm, writerttm, files, speakers, intervals, perfectsad, rmspeaker, mosttalkative, rmsadfromspeaker, insertspeaker, splitsad, readuem, writeuem
 
 using DataFrames
 using CSV
@@ -16,6 +16,8 @@ include("types.jl")
 
 Base.copy(r::RTTM) = RTTM(copy(r.b), copy(r.names), copy(r.file))
 Base.length(r::RTTM) = size(r.b, 1)
+speakers(r::RTTM) = r.names
+intervals(r::RTTM) = r.intervals
 
 ## constructor from dataframe
 function RTTM(df::DataFrame)
@@ -62,6 +64,7 @@ function DataFrame(r::RTTM)
     vcat(df...)
 end
 
+
 ## create RTTM object from one file in overall DataFrame
 RTTM(df::DataFrame, file::String) = RTTM(df[:(file .== $file),:])
 
@@ -92,7 +95,6 @@ end
 writerttm(file::String, r::RTTM; mindur=0.2) = writerttm(file, DataFrame(r))
 
 files(rttm::DataFrame) = unique(rttm[:file])
-speakers(r::RTTM) = r.names
 
 perfectsad(r::RTTM) = RTTM(any(r.b,2), ["SPEECH"], r.file)
 
