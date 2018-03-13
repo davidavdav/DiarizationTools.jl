@@ -68,10 +68,11 @@ function ensuresamelength!!(ref::RTTM, hyp::RTTM)
     end
 end
 
-function impurities(sys="ivectors")
-    basenames = getbasenames(joinpath("data", "ground_truth"))[1:20]
-    for (root, dirs, _) in Base.Filesystem.walkdir(joinpath("data", "linking_output", sys))
-        for dir in dirs
+function impurities(;sys="ivectors", nfiles=5)
+    out = open("performance.txt", "a")
+    basenames = getbasenames(joinpath("data", "ground_truth"))[1:nfiles]
+    root = joinpath("data", "linking_output", sys)
+    for dir in ("thres0.0", "thres0.75", "thres1.1542")
             m = match(r"thres([\d.]+)", dir)
             if m != nothing
                 thres = parse(Float64, m.captures[1])
@@ -87,8 +88,10 @@ function impurities(sys="ivectors")
                 Logging.info("Computing impurities")
                 spi, cli = spclimpurity(ref, hyp)
                 fa, miss = famiss(ref, hyp)
-                println(@sprintf("%s %6.4f %6.4f %6.4f %6.4f %6.4f", sys, thres, spi, cli, fa, miss))
-            end
+                line = @sprintf("%s %d %6.4f %6.4f %6.4f %6.4f %6.4f", sys, nfiles, thres, spi, cli, fa, miss)
+                println(line)
+                println(out, line)
         end
     end
+    close(out)
 end
