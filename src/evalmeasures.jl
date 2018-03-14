@@ -69,26 +69,30 @@ end
 ## in1 and in2 are matrices of fame start-stop times as rows
 ## they do not need to have the same length
 
-## complexity nseg(in1) × nseg(in2)
-function overlap1(in1::Matrix{T}, in2::Matrix{T}) where T
+## complexity nseg(ref) × nseg(hyp)
+function overlap1(r::Matrix{T}, h::Matrix{T}) where T
     tot_overlap = zero(T)
-    for i in 1:size(in1, 1), j in 1:size(in2, 1)
-        tot_overlap += max(0, min(in1[i, 2], in2[j, 2]) - max(in1[i, 1], in2[j, 1]))
+    for i in 1:size(r, 1), j in 1:size(h, 1)
+        tot_overlap += max(0, min(r[i, 2], h[j, 2]) - max(r[i, 1], h[j, 1]))
     end
     return tot_overlap
 end
 
-## complexity nseg(in1) + nseg(in2)
-function overlap(in1::Matrix{T}, in2::Matrix{T}) where T
+## complexity nseg(ref) + nseg(hyp)
+function overlap(r::Matrix{T}, h::Matrix{T}) where T
     tot_overlap = zero(T)
-    ni, nj = size(in1, 1), size(in2, 1)
+    ni, nj = size(r, 1), size(h, 1)
     i = j = 1
-    while i ≤ ni && j ≤ nj
-        tot_overlap += max(0, min(in1[i, 2], in2[j, 2]) - max(in1[i, 1], in2[j, 1]))
-        if in1[i, 2] < in2[j, 2]
+    while true
+        start = max(r[i, 1], h[j, 1])
+        if r[i, 2] < h[j, 2]
+            tot_overlap += max(0, r[i, 2] - start)
             i += 1
+            i ≤ ni || break
         else
+            tot_overlap += max(0, h[j, 2] - start)
             j += 1
+            j ≤ nj || break
         end
     end
     return tot_overlap
@@ -101,6 +105,32 @@ function impurity(ref::Vector{Matrix{T}}, h::Matrix{T}) where T
 end
 
 impurity(ref::Vector{Matrix{T}}, hyp::Vector{Matrix{T}}) where T = mean(impurity(ref, h) for h in hyp)
+
+function sad(intervals::Vector{Matrix{T}}) where T
+    ni = length(intervals)
+    indices = repmat([1], ni)
+    limits = [size(i, 1) for i in intervals]
+    res = Array{Vector{T}}(0)
+    start = minimum(intervals[i][indices[i], 1] for i in 1:ni if indices[i] ≤ limits[i])
+    while True
+        stop = maximum(intervals[i][indices[i], 2] for i in 1:ni if indices[i] ≤ limits[i])
+        for i in 1:ni
+            while indices[i] ≤ limit[i] && intervals[i][indices[i], 2] ≤ stop
+                indices[i] += 1
+            end
+        end
+        any(indices .≤ limits) || break
+        newstart = minimum(intervals[i][indices[i], 1] for i in 1:ni if indices[i] ≤ limits[i])
+        if newstart > stop
+            res.push!([start, stop])
+            start = newstart
+        end
+    end
+
+end
+
+function famiss(r::Vector{Matrix{T}}, h::Vector{Matrix{T}}) where T
+end
 
 spclimpurity(ref::Vector{Matrix{T}}, hyp::Vector{Matrix{T}}) where T = impurity(hyp, ref), impurity(ref, hyp)
 spclimpurity(ref::RTTM, hyp::RTTM) = spclimpurity(intervals(ref), intervals(hyp))
