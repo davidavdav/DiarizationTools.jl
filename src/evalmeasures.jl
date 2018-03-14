@@ -43,14 +43,55 @@ spclimpurity(ref::BitArray, hyp::BitArray) = impurity(hyp, ref), impurity(ref, h
 
 ## using intervals, is this faster?
 
+## Helper from rocanalysis
+## Returns the index to the largest value in the sorted array `a` ≤ `x` if lower==false
+## If lower==true, the value must be strictly < `x`
+function binsearch(x::Real, a::Vector{T}; lower=false, check=false) where T<:Real
+    check && (issorted(a) || error("Array needs to be sorted"))
+    mi = 1
+    ma = length(a)
+    if x < a[mi] || lower && x == a[mi]
+        return 0
+    elseif x > a[ma] || !lower && x == a[ma]
+        return ma
+    end
+    while ma - mi > 1
+        h = mi + (ma - mi) ÷ 2
+        if x > a[h] || !lower && x == a[h]
+            mi = h
+        else
+            ma = h
+        end
+    end
+    return mi
+end
+
 ## in1 and in2 are matrices of fame start-stop times as rows
 ## they do not need to have the same length
-function overlap(in1::Matrix{T}, in2::Matrix{T}) where T
-    o = zero(T)
+
+## complexity nseg(in1) × nseg(in2)
+function overlap1(in1::Matrix{T}, in2::Matrix{T}) where T
+    tot_overlap = zero(T)
     for i in 1:size(in1, 1), j in 1:size(in2, 1)
-        o += max(0, min(in1[i,2], in2[j,2]) - max(in1[i,1], in2[j,1]))
+        tot_overlap += max(0, min(in1[i, 2], in2[j, 2]) - max(in1[i, 1], in2[j, 1]))
     end
-    return o
+    return tot_overlap
+end
+
+## complexity nseg(in1) + nseg(in2)
+function overlap(in1::Matrix{T}, in2::Matrix{T}) where T
+    tot_overlap = zero(T)
+    ni, nj = size(in1, 1), size(in2, 1)
+    i = j = 1
+    while i ≤ ni && j ≤ nj
+        tot_overlap += max(0, min(in1[i, 2], in2[j, 2]) - max(in1[i, 1], in2[j, 1]))
+        if in1[i, 2] < in2[j, 2]
+            i += 1
+        else
+            j += 1
+        end
+    end
+    return tot_overlap
 end
 
 ## impurity between list-of-intervals and intervals
